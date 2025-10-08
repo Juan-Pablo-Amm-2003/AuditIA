@@ -1,0 +1,46 @@
+{
+  "nombre_hospital": "Hospital Universitario",
+  "proveedor_seguro": "Seguro Médico S.A.",
+  "pacientes": [
+    {
+      "informacion_paciente": {
+        "nombre": "María González",
+        "edad": 45,
+        "historia_clinica": "HC123456"
+      },
+      "facturas": [
+        {
+          "tipo_factura": "Ambulatoria",
+          "codigo_documento": "FAC001",
+          "fecha_emision": "2024-01-15",
+          "items": [
+            {
+              "fecha": "2024-01-15",
+              "descripción": "Paracetamol 500 MG Comprimidos",
+              "cantidad": 2,
+              "precio_unitario": 150.00,
+              "precio_total": 300.00,
+              "notas": "Control de dolor"
+            },
+            {
+              "fecha": "2024-01-15",
+              "descripción": "Amoxicilina 500 MG Cápsulas",
+              "cantidad": 1,
+              "precio_unitario": 250.00,
+              "precio_total": 250.00,
+              "notas": "Infección respiratoria"
+            },
+            {
+              "fecha": "2024-01-15",
+              "descripción": "Ibuprofeno 400 MG Comprimidos",
+              "cantidad": 3,
+              "precio_unitario": 120.00,
+              "precio_total": 360.00,
+              "notas": "Antiinflamatorio"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,265 @@
+{
+    "nombre_hospital": "SANATORIO ALLENDE",
+    "proveedor_seguro": "PREVENCION SALUD SOCIEDAD S.A.",
+    "pacientes": [
+        {
+            "informacion_paciente": {
+                "nombre": "BEUCK AMORES NOAH CONSTANTINO",
+                "numero_afiliado": "14480701031",
+                "edad": 4,
+                "numero_interno_paciente": null,
+                "numero_habitacion": "999"
+            },
+            "facturas": [
+                {
+                    "tipo_factura": "MEDICAMENTOS",
+                    "codigo_documento": "F.M.6",
+                    "fecha_emision": "2024-12-24",
+                    "departamento": null,
+                    "numero_control": null,
+                    "items": [
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "AGUA DESTILADA X 10 ML.",
+                            "cantidad": 1,
+                            "precio_unitario": 371421,
+                            "precio_total": 371421,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "AGUA DESTILADA X 10 ML.",
+                            "cantidad": 1,
+                            "precio_unitario": 371421,
+                            "precio_total": 371421,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "BAREX UNIPEG - SOBRES",
+                            "cantidad": 1,
+                            "precio_unitario": 408672,
+                            "precio_total": 408672,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "CARBONATO DE CALCIO 1250",
+                            "cantidad": 1,
+                            "precio_unitario": 21659,
+                            "precio_total": 21659,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "DELTISONA B-8 MG .- COMP.",
+                            "cantidad": 1,
+                            "precio_unitario": 6331,
+                            "precio_total": 6331,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "DELTISONA B-8 MG .- COMP.",
+                            "cantidad": 1,
+                            "precio_unitario": 6331,
+                            "precio_total": 6331,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "DELTISONA B-8 MG .- COMP.",
+                            "cantidad": 1,
+                            "precio_unitario": 6331,
+                            "precio_total": 6331,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "DELTISONA B-8 MG .- COMP.",
+                            "cantidad": 1,
+                            "precio_unitario": 6331,
+                            "precio_total": 6331,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "HIPOGLOS X 50GRS - PDA",
+                            "cantidad": 1,
+                            "precio_unitario": 1054612,
+                            "precio_total": 1054612,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "MICOSTYL ORAL SUP. X 60 M",
+                            "cantidad": 1,
+                            "precio_unitario": 2003700,
+                            "precio_total": 2003700,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "NOVALGINA 1 G - AMP.",
+                            "cantidad": 1,
+                            "precio_unitario": 246376,
+                            "precio_total": 246376,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "PIPERACILINA + TAZOBACTAN",
+                            "cantidad": 1,
+                            "precio_unitario": 7741154,
+                            "precio_total": 7741154,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "PIPERACILINA + TAZOBACTAN",
+                            "cantidad": 1,
+                            "precio_unitario": 7741154,
+                            "precio_total": 7741154,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "SOL. FISIOL 100 ML ECOFLA",
+                            "cantidad": 1,
+                            "precio_unitario": 978727,
+                            "precio_total": 978727,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "SOL. FISIOL 100 ML ECOFLA",
+                            "cantidad": 1,
+                            "precio_unitario": 978727,
+                            "precio_total": 978727,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "SOL. FISIOL 100 ML ECOFLA",
+                            "cantidad": 1,
+                            "precio_unitario": 978727,
+                            "precio_total": 978727,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-01",
+                            "descripción": "SOL. FISIOL 500 ML ECOFLA",
+                            "cantidad": 1,
+                            "precio_unitario": 1456682,
+                            "precio_total": 1456682,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-02",
+                            "descripción": "AGUA DESTILADA X 10 ML.",
+                            "cantidad": 1,
+                            "precio_unitario": 371421,
+                            "precio_total": 371421,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-02",
+                            "descripción": "AGUA DESTILADA X 10 ML.",
+                            "cantidad": 1,
+                            "precio_unitario": 371421,
+                            "precio_total": 371421,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-02",
+                            "descripción": "BACTROBAN 2% CREMA. X 15",
+                            "cantidad": 1,
+                            "precio_unitario": 1374500,
+                            "precio_total": 1374500,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-02",
+                            "descripción": "BAREX UNIPEG - SOBRES",
+                            "cantidad": 1,
+                            "precio_unitario": 408672,
+                            "precio_total": 408672,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-02",
+                            "descripción": "CARBONATO DE CALCIO 1250",
+                            "cantidad": 1,
+                            "precio_unitario": 21659,
+                            "precio_total": 21659,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-02",
+                            "descripción": "DELTISONA B-8 MG .- COMP.",
+                            "cantidad": 1,
+                            "precio_unitario": 6331,
+                            "precio_total": 6331,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-02",
+                            "descripción": "DELTISONA B-8 MG .- COMP.",
+                            "cantidad": 1,
+                            "precio_unitario": 6331,
+                            "precio_total": 6331,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-02",
+                            "descripción": "DELTISONA B-8 MG .- COMP.",
+                            "cantidad": 1,
+                            "precio_unitario": 6331,
+                            "precio_total": 6331,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-02",
+                            "descripción": "DELTISONA B-8 MG .- COMP.",
+                            "cantidad": 1,
+                            "precio_unitario": 6331,
+                            "precio_total": 6331,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-02",
+                            "descripción": "DELTISONA B-8 MG .- COMP.",
+                            "cantidad": 1,
+                            "precio_unitario": 6331,
+                            "precio_total": 6331,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-02",
+                            "descripción": "DELTISONA B-8 MG .- COMP.",
+                            "cantidad": 1,
+                            "precio_unitario": 6331,
+                            "precio_total": 6331,
+                            "notas": "NO"
+                        },
+                        {
+                            "fecha": "2024-11-02",
+                            "descripción": "FADA OMEPRAZOL 40 MG/10 M",
+                            "cantidad": 1,
+                            "precio_unitario": 3231000,
+                            "precio_total": 3231000,
+                            "notas": "NO"
+                        }
+                    ],
+                    "resumen": {
+                        "total_honorarios": null,
+                        "total_gastos": null,
+                        "total_a_cargo_mutual": null,
+                        "total_a_cargo_afiliado": null,
+                        "monto_total": null
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,33 @@
+# Entornos virtuales
+.venv
+venv/
+env/
+
+# Archivos de dependencias de Pip
+*.pip
+
+# Archivos de configuración de IDEs
+.vscode/
+.idea/
+
+# Archivos de Python compilados y caché
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos de entorno
+.env
+
+# Archivos de build y distribución
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+
+# Cobertura de tests
+.coverage
+htmlcov/
+.pytest_cache/
