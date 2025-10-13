@@ -23,6 +23,7 @@ origins = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:8080",
+    "https://audit-ia-alpha.vercel.app",
 ]
 app.add_middleware(
     CORSMiddleware,
