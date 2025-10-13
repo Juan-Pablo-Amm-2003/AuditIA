@@ -1,159 +1,127 @@
 import asyncio
 import logging
+import json
 from typing import List, Dict, Any
+from pathlib import Path
 from thefuzz import fuzz
-from src.db import get_by_exact_name, search_broadly_by_name, search_fuzzy
+from src.db import get_by_exact_name, search_fuzzy, get_by_codigo
 from src.services.ai_assistant import AIAssistant
-from src.services.reporting_service import ReportingService
 
 logger = logging.getLogger(__name__)
+SYNONYMS_FILE = Path("data/synonyms.json")
 
 class OrchestrationService:
+    """Orquesta el flujo completo de auditoría de ítems de factura."""
     def __init__(self):
         self.ai_agent = AIAssistant()
-        self.reporting_service = ReportingService()
+        self.synonyms = self._load_synonyms()
+
+    def _load_synonyms(self) -> Dict[str, str]:
+        """Carga el diccionario de sinónimos desde un archivo JSON."""
+        if SYNONYMS_FILE.is_file():
+            try:
+                with open(SYNONYMS_FILE, 'r', encoding='utf-8') as f: return json.load(f)
+            except (json.JSONDecodeError, FileNotFoundError): return {}
+        return {}
 
     async def process_items(self, items: List[Dict[str, Any]]) -> Dict[str, List]:
-        logger.debug(f"--- FASE 2: INICIO --- Recibidos {len(items)} ítems para procesar.")
-        conciliados_exactos = []
-        pendientes_para_agente = []
+        """FASE 2: Procesa ítems para encontrar matches directos o preparar para la IA."""
+        conciliados_exactos, pendientes_para_agente = [], []
 
         for item in items:
             nombre_factura = item["nombre_factura"]
-            exact_match = get_by_exact_name(nombre_factura)
+            
+            match_info = None
+            if nombre_factura in self.synonyms:
+                codigo = self.synonyms[nombre_factura]
+                logger.info(f"Match por Sinónimo para '{nombre_factura}' -> '{codigo}'")
+                match = get_by_codigo(codigo)
+                if match:
+                    match_info = {"codigo_bd": match[0], "nombre_bd": match[1], "precio_referencia": float(match[2]) if match[2] else 0.0, "confianza": 100}
+            
+            if not match_info:
+                exact_match = get_by_exact_name(nombre_factura)
+                if exact_match:
+                    match_info = {"codigo_bd": exact_match[0], "nombre_bd": exact_match[1], "precio_referencia": float(exact_match[2]) if exact_match[2] else 0.0, "confianza": 100}
 
-            if exact_match:
-                logger.debug(f"Match exacto encontrado para: '{nombre_factura}'")
-                conciliados_exactos.append({
-                    "nombre_factura": nombre_factura, "precio_factura": item["precio_factura"],
-                    "codigo_bd": exact_match[0], "nombre_bd": exact_match[1],
-                    "precio_referencia": float(exact_match[2]) if exact_match[2] else None,
-                    "confianza": 100
-                })
+            if match_info:
+                conciliados_exactos.append({**item, **match_info})
             else:
-                logger.debug(f"No hubo match exacto para: '{nombre_factura}'. Buscando candidatos...")
-                
-                fuzzy_candidates_rows = search_fuzzy(nombre_factura, k=50)
-                
+                fuzzy_rows = search_fuzzy(nombre_factura, k=50)
                 candidatos_puntuados = []
-                if fuzzy_candidates_rows:
-                    for cand_row in fuzzy_candidates_rows:
-                        cand_dict = {"codigo": cand_row[0], "nombre": cand_row[1], "precio": float(cand_row[2]) if cand_row[2] else None}
+                if fuzzy_rows:
+                    for code, name, price in fuzzy_rows:
+                        cand_dict = {"codigo": code, "nombre": name, "precio": float(price) if price is not None else 0.0}
                         score = fuzz.token_set_ratio(nombre_factura, cand_dict["nombre"])
-                        if score > 45:
-                            candidatos_puntuados.append((score, cand_dict))
+                        if score > 45: candidatos_puntuados.append((score, cand_dict))
                 
                 candidatos_puntuados.sort(key=lambda x: x[0], reverse=True)
-
-                # --- INICIO DE LA CORRECCIÓN ---
-                # Si el mejor candidato tiene 100% de similitud, lo consideramos un match y no lo enviamos a la IA.
-                if candidatos_puntuados and candidatos_puntuados[0][0] == 100:
-                    logger.debug(f"Match de similitud 100% encontrado para: '{nombre_factura}'")
-                    best_match = candidatos_puntuados[0][1]
-                    conciliados_exactos.append({
-                        "nombre_factura": nombre_factura, 
-                        "precio_factura": item["precio_factura"],
-                        "codigo_bd": best_match['codigo'], 
-                        "nombre_bd": best_match['nombre'],
-                        "precio_referencia": best_match['precio'],
-                        "confianza": 100
-                    })
-                    continue  # Pasamos al siguiente ítem
-                # --- FIN DE LA CORRECCIÓN ---
-
-                top_10_candidatos_con_score = [
-                    {**cand, "score": score} for score, cand in candidatos_puntuados[:10]
-                ]
-                
+                top_10 = [{**cand, "score": score} for score, cand in candidatos_puntuados[:10]]
                 mejor_intento = {"nombre_bd": candidatos_puntuados[0][1]['nombre'], "score": candidatos_puntuados[0][0]} if candidatos_puntuados else None
+                pendientes_para_agente.append({**item, "candidatos_bd": top_10, "mejor_intento": mejor_intento})
 
-                pendientes_para_agente.append({
-                    "nombre_factura": nombre_factura, 
-                    "precio_factura": item["precio_factura"],
-                    "candidatos_bd": top_10_candidatos_con_score,
-                    "mejor_intento": mejor_intento
-                })
-
-        logger.debug(f"--- FASE 2: FIN --- {len(conciliados_exactos)} conciliados, {len(pendientes_para_agente)} pendientes.")
         return {"conciliados_exactos": conciliados_exactos, "pendientes_para_agente": pendientes_para_agente}
 
     async def run_conciliation_phase(self, pendientes: List[Dict[str, Any]]) -> Dict[str, List]:
-        logger.debug(f"--- FASE 3: INICIO --- Enviando {len(pendientes)} ítems a Agno.")
+        """FASE 3: Ejecuta la conciliación con IA en paralelo."""
         tasks = [self.ai_agent.conciliate_item(item) for item in pendientes]
         results = await asyncio.gather(*tasks)
+        conciliados_por_ia, fallidos = [], []
 
-        conciliados_por_ia = []
-        fallidos_con_mejor_intento = []
-
-        for result, original_item in zip(results, pendientes):
-            logger.debug(f"Respuesta cruda de Agno para '{original_item['nombre_factura']}': {result}")
-            codigo_conciliado = result.get("codigo_bd_conciliado")
-            confianza = result.get("confianza", 0)
-
-            if codigo_conciliado:
-                candidato_elegido = next((c for c in original_item['candidatos_bd'] if c['codigo'] == codigo_conciliado), None)
-                if candidato_elegido:
+        for result, item in zip(results, pendientes):
+            codigo = result.get("codigo_bd_conciliado")
+            if codigo:
+                candidato = next((c for c in item['candidatos_bd'] if c['codigo'] == codigo), None)
+                if candidato:
                     conciliados_por_ia.append({
-                        "nombre_factura": original_item["nombre_factura"], 
-                        "precio_factura": original_item["precio_factura"],
-                        "codigo_bd": codigo_conciliado, 
-                        "nombre_bd": candidato_elegido.get('nombre'), 
-                        "precio_referencia": candidato_elegido.get('precio'),
-                        "confianza": confianza
+                        **item, 
+                        "codigo_bd": codigo, 
+                        "nombre_bd": candidato.get('nombre'), 
+                        "precio_referencia": candidato.get('precio', 0.0), 
+                        "confianza": result.get("confianza", 0)
                     })
             else:
-                logger.warning(f"Agno no pudo conciliar '{original_item['nombre_factura']}'.")
-                fallidos_con_mejor_intento.append({
-                    "nombre_factura": original_item["nombre_factura"],
-                    "mejor_intento": original_item.get("mejor_intento")
-                })
+                fallidos.append({**item, "mejor_intento": item.get("mejor_intento")})
         
-        logger.debug(f"--- FASE 3: FIN --- Agno concilió {len(conciliados_por_ia)} ítems.")
-        return {"conciliados": conciliados_por_ia, "fallidos": fallidos_con_mejor_intento}
+        logger.info(f"Fase 3 completada: {len(conciliados_por_ia)} conciliados por IA.")
+        return {"conciliados": conciliados_por_ia, "fallidos": fallidos}
 
-    def _annotate_with_surcharges(self, all_conciliated_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        logger.debug(f"--- FASE 4: INICIO (Anotación) --- Calculando precios para {len(all_conciliated_items)} ítems.")
-        annotated_items = []
-        for item in all_conciliated_items:
-            item_report = item.copy()
-            precio_factura = item.get("precio_factura")
-            precio_referencia = item.get("precio_referencia")
-            item_report["monto_sobreprecio"] = 0.0
-            item_report["porcentaje_sobreprecio"] = 0.0
-            if precio_factura is not None and precio_referencia is not None and precio_referencia > 0:
-                diferencia = precio_factura - precio_referencia
-                item_report["monto_sobreprecio"] = round(diferencia, 2)
-                item_report["porcentaje_sobreprecio"] = round((diferencia / precio_referencia) * 100, 2)
-            annotated_items.append(item_report)
-        logger.debug(f"--- FASE 4: FIN (Anotación) --- Anotación de precios completa.")
-        return annotated_items
+    def _annotate_with_surcharges(self, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """FASE 4: Calcula y anota la información de sobreprecio."""
+        annotated = []
+        for item in items:
+            report = item.copy()
+            total_facturado, ref_unitario, cantidad = item.get("precio_total_agregado"), item.get("precio_referencia"), item.get("cantidad_total")
+            report["monto_sobreprecio"], report["porcentaje_sobreprecio"] = 0.0, 0.0
+            if all(v is not None for v in [total_facturado, ref_unitario, cantidad]) and ref_unitario > 0 and cantidad > 0:
+                ref_total = ref_unitario * cantidad
+                diferencia = total_facturado - ref_total
+                report["monto_sobreprecio"] = round(diferencia, 2)
+                report["porcentaje_sobreprecio"] = round((diferencia / ref_total) * 100, 2)
+            annotated.append(report)
+        return annotated
 
-    async def generate_final_summary(
-        self,
-        total_unique_items: List[Dict[str, Any]],
-        all_conciliated_items: List[Dict[str, Any]],
-        unconciliated_items_with_details: List[Dict[str, Any]],
-        surcharge_threshold: float
-    ) -> str:
-        logger.debug("--- FASE 5: INICIO --- Generando resumen ejecutivo.")
+    def generate_final_summary(self, total_items: List[Dict[str, Any]], all_conciliated: List[Dict[str, Any]], fallidos: List[Dict[str, Any]], threshold: float) -> Dict[str, Any]:
+        """FASE 5: Construye el objeto de datos final para la respuesta de la API."""
+        annotated = self._annotate_with_surcharges(all_conciliated)
         
-        annotated_conciliated_items = self._annotate_with_surcharges(all_conciliated_items)
+        # Renombramos 'precio_unitario' a 'precio_factura' para el front-end
+        for item in annotated:
+            if 'precio_unitario' in item:
+                item['precio_factura'] = item.pop('precio_unitario')
+                
+        sobreprecio = [item for item in annotated if item["porcentaje_sobreprecio"] > threshold]
         
-        discrepancies = [
-            item for item in annotated_conciliated_items 
-            if item["porcentaje_sobreprecio"] > surcharge_threshold
-        ]
-
-        results_data = {
+        return {
             "metricas": {
-                "items_procesados": len(total_unique_items),
-                "items_conciliados": len(all_conciliated_items),
-                "items_con_sobreprecio": len(discrepancies)
+                "ahorro_potencial": sum(d.get("monto_sobreprecio", 0) for d in sobreprecio),
+                "monto_total_facturado": sum(i.get("precio_total_agregado", 0) for i in total_items),
+                "items_procesados": len(total_items),
+                "items_conciliados": len(all_conciliated),
+                "items_con_sobreprecio": len(sobreprecio),
+                "items_no_conciliados": len(fallidos)
             },
-            "items_conciliados": annotated_conciliated_items,
-            "items_no_conciliados": unconciliated_items_with_details
+            "items_conciliados": annotated,
+            "items_con_sobreprecio": sobreprecio,
+            "items_no_conciliados": fallidos
         }
-        
-        summary = await self.reporting_service.generate_summary(results_data)
-        logger.debug("--- FASE 5: FIN --- Resumen ejecutivo generado.")
-        return summary

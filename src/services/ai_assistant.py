@@ -7,41 +7,42 @@ from openai import AsyncOpenAI
 logger = logging.getLogger(__name__)
 
 class AIAssistant:
+    # --- 1. PROMPT ACTUALIZADO PARA ENTENDER CANTIDADES ---
     PROMPT_TEMPLATE = """
 # ROL Y OBJETIVO
-Eres Agno, un asistente de IA experto en la conciliación de nombres de medicamentos. Tu única tarea es analizar un "nombre_original_factura" y elegir el "codigo_bd" del candidato más probable de la lista.
+Eres Agno, un asistente de IA experto en conciliar medicamentos. Tu tarea es analizar un "nombre_original_factura" y la "cantidad_consumida", y elegir el candidato más lógico de la lista.
 
 # CONTEXTO Y REGLAS
-- El "nombre_original_factura" puede tener abreviaturas, errores o información parcial.
-- La "lista_de_candidatos" ahora incluye un "score" (0-100) de similitud de texto. Usa este puntaje como una guía muy importante. Un score alto (>85) es una señal muy fuerte de que el candidato es correcto.
-- Analiza el nombre, la dosis, la forma farmacéutica y el laboratorio para tomar tu decisión final.
+- La "lista_de_candidatos" incluye un "score" de similitud de texto. Úsalo como una guía muy importante.
+- **REGLA CLAVE:** Compara la "cantidad_consumida" con la información de empaque en los nombres de los candidatos (ej. "x 7", "x 20"). Elige el candidato cuyo empaque sea el más lógicamente compatible. Por ejemplo, si se consumieron 8 unidades, no puede ser una caja de 7; debe ser una de 20.
 - Si NINGÚN candidato es una coincidencia clara y confiable, devuelve `null` en el código.
 - Tu respuesta DEBE SER ÚNICAMENTE un objeto JSON con el código elegido y el score del candidato que elegiste.
 
 # EJEMPLOS
 
-## Ejemplo 1: Coincidencia Clara
+## Ejemplo 1: Coincidencia por Cantidad (Caso BAREX)
 ### Entrada:
 {{
-  "nombre_original_factura": "DELTISONA B-8 MG .- COMP.",
+  "nombre_original_factura": "BAREX UNIPEG - SOBRES",
+  "cantidad_consumida": 10,
   "lista_de_candidatos": [
-    {{"codigo_bd": "7795345001275", "nombre_bd": "BAGO DELTISONA B 8 MG 20 COMPRIMIDOS", "score": 95}},
-    {{"codigo_bd": "7795345001237", "nombre_bd": "BAGO DELTISONA 40 MG 20 COMPRIMIDOS", "score": 70}}
+    {{"codigo": "111", "nombre": "BAREX UNIPEG sobres x 7", "score": 100}},
+    {{"codigo": "222", "nombre": "BAREX UNIPEG sobres x 15", "score": 98}}
   ]
 }}
 ### Salida Esperada:
 {{
-  "codigo_bd_conciliado": "7795345001275",
-  "confianza": 95
+  "codigo_bd_conciliado": "222",
+  "confianza": 98
 }}
 
 ## Ejemplo 2: Sin Coincidencia Confiable
 ### Entrada:
 {{
   "nombre_original_factura": "ANALGESICO FUERTE",
+  "cantidad_consumida": 1,
   "lista_de_candidatos": [
-    {{"codigo_bd": "7790010004514", "nombre_bd": "AGUA DESTILADA X 500 ML", "score": 30}},
-    {{"codigo_bd": "7790010004545", "nombre_bd": "ALCOHOL ETILICO 500 ML", "score": 25}}
+    {{"codigo": "779", "nombre": "AGUA DESTILADA X 500 ML", "score": 30}}
   ]
 }}
 ### Salida Esperada:
@@ -55,6 +56,7 @@ Realiza la conciliación para la siguiente entrada:
 ### Entrada:
 {{
   "nombre_original_factura": "{nombre_factura}",
+  "cantidad_consumida": {cantidad_consumida},
   "lista_de_candidatos": {candidatos_json_str}
 }}
 ### Salida Esperada:
@@ -67,9 +69,12 @@ Realiza la conciliación para la siguiente entrada:
         self.client = AsyncOpenAI(api_key=api_key)
         self.model = "gpt-4o"
 
+    # --- 2. FUNCIÓN ACTUALIZADA PARA MANEJAR LA CANTIDAD ---
     async def conciliate_item(self, item_to_conciliate: Dict[str, Any]) -> Dict[str, Any]:
         nombre_factura = item_to_conciliate.get('nombre_factura')
         candidatos_bd = item_to_conciliate.get('candidatos_bd', [])
+        # Se añade la cantidad total consumida
+        cantidad_consumida = item_to_conciliate.get('cantidad_total', 1)
 
         if not nombre_factura:
             logger.error("No se encontró 'nombre_factura' en el ítem a conciliar.")
@@ -82,6 +87,7 @@ Realiza la conciliación para la siguiente entrada:
         candidatos_json_str = json.dumps(candidatos_bd, ensure_ascii=False, indent=2)
         final_prompt = self.PROMPT_TEMPLATE.format(
             nombre_factura=nombre_factura,
+            cantidad_consumida=cantidad_consumida, # Se pasa la cantidad al prompt
             candidatos_json_str=candidatos_json_str
         )
         
