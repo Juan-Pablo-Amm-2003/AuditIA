@@ -32,21 +32,41 @@ class OrchestrationService:
             nombre_factura = item["nombre_factura"]
             
             match_info = None
+            
+            # 1. Match por Sinónimo
             if nombre_factura in self.synonyms:
                 codigo = self.synonyms[nombre_factura]
                 logger.info(f"Match por Sinónimo para '{nombre_factura}' -> '{codigo}'")
                 match = get_by_codigo(codigo)
                 if match:
-                    match_info = {"codigo_bd": match[0], "nombre_bd": match[1], "precio_referencia": float(match[2]) if match[2] else 0.0, "confianza": 100}
+                    # MEJORA #1: Asignación de Score 100.0 y Método
+                    match_info = {
+                        "codigo_bd": match[0], 
+                        "nombre_bd": match[1], 
+                        "precio_referencia": float(match[2]) if match[2] else 0.0, 
+                        "confianza": 100,
+                        "score_coincidencia": 100.0,
+                        "metodo_conciliacion": "Sinónimo" # <-- AÑADIDO
+                    }
             
+            # 2. Match Exacto (solo si no se encontró por sinónimo)
             if not match_info:
                 exact_match = get_by_exact_name(nombre_factura)
                 if exact_match:
-                    match_info = {"codigo_bd": exact_match[0], "nombre_bd": exact_match[1], "precio_referencia": float(exact_match[2]) if exact_match[2] else 0.0, "confianza": 100}
+                    # MEJORA #1: Asignación de Score 100.0 y Método
+                    match_info = {
+                        "codigo_bd": exact_match[0], 
+                        "nombre_bd": exact_match[1], 
+                        "precio_referencia": float(exact_match[2]) if exact_match[2] else 0.0, 
+                        "confianza": 100,
+                        "score_coincidencia": 100.0, # <-- AÑADIDO
+                        "metodo_conciliacion": "Exacto" # <-- AÑADIDO
+                    }
 
             if match_info:
                 conciliados_exactos.append({**item, **match_info})
             else:
+                # Lógica para ítems pendientes para la IA/Fuzzing
                 fuzzy_rows = search_fuzzy(nombre_factura, k=50)
                 candidatos_puntuados = []
                 if fuzzy_rows:
@@ -56,8 +76,10 @@ class OrchestrationService:
                         if score > 45: candidatos_puntuados.append((score, cand_dict))
                 
                 candidatos_puntuados.sort(key=lambda x: x[0], reverse=True)
+                
                 top_10 = [{**cand, "score": score} for score, cand in candidatos_puntuados[:10]]
                 mejor_intento = {"nombre_bd": candidatos_puntuados[0][1]['nombre'], "score": candidatos_puntuados[0][0]} if candidatos_puntuados else None
+                
                 pendientes_para_agente.append({**item, "candidatos_bd": top_10, "mejor_intento": mejor_intento})
 
         return {"conciliados_exactos": conciliados_exactos, "pendientes_para_agente": pendientes_para_agente}
@@ -73,12 +95,17 @@ class OrchestrationService:
             if codigo:
                 candidato = next((c for c in item['candidatos_bd'] if c['codigo'] == codigo), None)
                 if candidato:
+                    # MEJORA #2: Obtener el score del candidato y Método IA
+                    score = candidato.get('score', 0.0) 
+                    
                     conciliados_por_ia.append({
                         **item, 
                         "codigo_bd": codigo, 
                         "nombre_bd": candidato.get('nombre'), 
                         "precio_referencia": candidato.get('precio', 0.0), 
-                        "confianza": result.get("confianza", 0)
+                        "confianza": result.get("confianza", 0),
+                        "score_coincidencia": score, # <-- CORRECCIÓN
+                        "metodo_conciliacion": "IA/Fuzzy" # <-- AÑADIDO
                     })
             else:
                 fallidos.append({**item, "mejor_intento": item.get("mejor_intento")})
