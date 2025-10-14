@@ -14,6 +14,7 @@ class OrchestrationService:
     """Orquesta el flujo completo de auditoría de ítems de factura."""
     def __init__(self):
         self.ai_agent = AIAssistant()
+        # Cargamos los sinónimos (que contienen las correcciones manuales)
         self.synonyms = self._load_synonyms()
 
     def _load_synonyms(self) -> Dict[str, str]:
@@ -32,41 +33,49 @@ class OrchestrationService:
             nombre_factura = item["nombre_factura"]
             
             match_info = None
-            
-            # 1. Match por Sinónimo
+            metodo_origen = None # Inicializamos la variable para la regla de origen
+
+            # 1. Match por Sinónimo (Incluye correcciones manuales persistidas)
             if nombre_factura in self.synonyms:
                 codigo = self.synonyms[nombre_factura]
-                logger.info(f"Match por Sinónimo para '{nombre_factura}' -> '{codigo}'")
+                
+                # --- LÓGICA CRÍTICA DE ORIGEN ---
+                # Si está en el archivo que guarda las correcciones, lo etiquetamos como Manual.
+                # Como tu back-end usa este archivo para persistir correcciones, asignamos "Manual".
+                metodo_origen = "Manual" 
+                logger.info(f"Match por Corrección Persistida para '{nombre_factura}' -> '{codigo}'")
+                
                 match = get_by_codigo(codigo)
                 if match:
-                    # MEJORA #1: Asignación de Score 100.0 y Método
+                    # Asignación de Score 100.0 y Método
                     match_info = {
                         "codigo_bd": match[0], 
                         "nombre_bd": match[1], 
                         "precio_referencia": float(match[2]) if match[2] else 0.0, 
                         "confianza": 100,
                         "score_coincidencia": 100.0,
-                        "metodo_conciliacion": "Sinónimo" # <-- AÑADIDO
+                        "metodo_conciliacion": "Manual" # <--- ¡ETIQUETA MANUAL APLICADA!
                     }
             
             # 2. Match Exacto (solo si no se encontró por sinónimo)
             if not match_info:
                 exact_match = get_by_exact_name(nombre_factura)
                 if exact_match:
-                    # MEJORA #1: Asignación de Score 100.0 y Método
+                    logger.info(f"Match por Exacto para '{nombre_factura}' -> '{exact_match[0]}'")
+                    # Asignación de Score 100.0 y Método
                     match_info = {
                         "codigo_bd": exact_match[0], 
                         "nombre_bd": exact_match[1], 
                         "precio_referencia": float(exact_match[2]) if exact_match[2] else 0.0, 
                         "confianza": 100,
-                        "score_coincidencia": 100.0, # <-- AÑADIDO
-                        "metodo_conciliacion": "Exacto" # <-- AÑADIDO
+                        "score_coincidencia": 100.0, 
+                        "metodo_conciliacion": "Exacto" # <-- BASE DE DATOS
                     }
 
             if match_info:
                 conciliados_exactos.append({**item, **match_info})
             else:
-                # Lógica para ítems pendientes para la IA/Fuzzing
+                # 3. Fallback a Fuzzing/IA (Pendientes para el agente)
                 fuzzy_rows = search_fuzzy(nombre_factura, k=50)
                 candidatos_puntuados = []
                 if fuzzy_rows:
@@ -95,7 +104,6 @@ class OrchestrationService:
             if codigo:
                 candidato = next((c for c in item['candidatos_bd'] if c['codigo'] == codigo), None)
                 if candidato:
-                    # MEJORA #2: Obtener el score del candidato y Método IA
                     score = candidato.get('score', 0.0) 
                     
                     conciliados_por_ia.append({
@@ -104,8 +112,8 @@ class OrchestrationService:
                         "nombre_bd": candidato.get('nombre'), 
                         "precio_referencia": candidato.get('precio', 0.0), 
                         "confianza": result.get("confianza", 0),
-                        "score_coincidencia": score, # <-- CORRECCIÓN
-                        "metodo_conciliacion": "IA/Fuzzy" # <-- AÑADIDO
+                        "score_coincidencia": score, 
+                        "metodo_conciliacion": "IA/Fuzzy" # <-- BASE DE DATOS
                     })
             else:
                 fallidos.append({**item, "mejor_intento": item.get("mejor_intento")})
