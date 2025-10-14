@@ -25,6 +25,7 @@ origins = [
     "http://localhost:8080",
     "https://audit-ia-alpha.vercel.app",
     "https://audit-j67e9cawp-juan-pablo-amm-2003s-projects.vercel.app",
+    "https://audit-ia-frontend.vercel.app"
 ]
 app.add_middleware(
     CORSMiddleware,
