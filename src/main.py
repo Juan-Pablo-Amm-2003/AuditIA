@@ -6,33 +6,32 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.routers import invoices, ai_assistant as ai_assistant_router, feedback as feedback_router, database as database_router
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
-)
+logging.basicConfig(level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="API de Auditoría de Medicamentos",
     description="Un sistema para auditar facturas de medicamentos usando IA.",
-    version="2.0.0"
+    version="2.0.0",
 )
 
-origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:8080",
+ALLOWED_ORIGINS = [
+    "https://audit-ia-frontend.vercel.app",
     "https://audit-ia-alpha.vercel.app",
-    "https://audit-j67e9cawp-juan-pablo-amm-2003s-projects.vercel.app",
-    "https://audit-ia-frontend.vercel.app"
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:8080",
 ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https://[a-z0-9-]+\.vercel\.app$",  # cubre previews
+    allow_credentials=False,            # pon True solo si usás cookies
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
+    expose_headers=["Content-Type"],
 )
 
 @app.on_event("startup")
