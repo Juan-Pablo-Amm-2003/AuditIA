@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from src.models import InvoiceInput
 from src.services.cleaning import InvoiceProcessor
-from src.services.orchestration_service import OrchestrationService
+from src.services.main_service import orchestrator # Importamos la instancia singleton
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/invoices", tags=["Auditoría de Facturas"])
@@ -24,7 +24,6 @@ async def _run_audit_logic(invoice_data: dict, surcharge_threshold: float) -> di
         ]
         logger.info(f"Fase 1 completada: {len(items_for_phase2)} ítems únicos agregados.")
         
-        orchestrator = OrchestrationService()
         phase2 = await orchestrator.process_items(items_for_phase2)
         conciliados_exactos = phase2.get('conciliados_exactos', [])
         pendientes = phase2.get('pendientes_para_agente', [])

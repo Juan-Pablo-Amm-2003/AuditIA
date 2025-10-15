@@ -5,6 +5,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.routers import invoices, ai_assistant as ai_assistant_router, feedback as feedback_router, database as database_router
+from src.services.main_service import orchestrator
 
 logging.basicConfig(level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")

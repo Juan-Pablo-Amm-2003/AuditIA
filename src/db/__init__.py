@@ -7,12 +7,16 @@ logger = logging.getLogger(__name__)
 
 engine = create_engine(settings.DATABASE_URL)
 
-__all__ = ["get_conn", "get_by_codigo", "search_fuzzy", "get_by_exact_name"]
+__all__ = [
+    "get_conn", "get_by_codigo", "search_fuzzy", "get_by_exact_name",
+    "load_all_synonyms_from_db", "upsert_manual_correction"
+]
 
 def get_conn():
     return engine.connect()
 
 def get_by_codigo(codigo: str):
+    """Obtiene un medicamento por su código."""
     with get_conn() as cn:
         query = text("""
             SELECT codigo, nombre, precio FROM medicamentos WHERE codigo = :codigo
@@ -21,6 +25,33 @@ def get_by_codigo(codigo: str):
         """)
         result = cn.execute(query, {"codigo": codigo}).fetchone()
         return result
+
+def load_all_synonyms_from_db():
+    """Carga todos los sinónimos y correcciones desde la BD a un diccionario."""
+    # Usamos la sintaxis de PostgreSQL para la consulta
+    query = text("SELECT nombre_factura, codigo_medicamento, metodo FROM sinonimos_factura")
+    mappings = {}
+    with get_conn() as conn:
+        result = conn.execute(query)
+        for row in result:
+            # El resultado de la consulta es (nombre_factura, codigo_medicamento, metodo)
+            mappings[row[0]] = {"codigo": row[1], "metodo": row[2]}
+    logger.info(f"Cargados {len(mappings)} mapeos desde la base de datos.")
+    return mappings
+
+def upsert_manual_correction(nombre_factura: str, codigo_medicamento: str):
+    """Inserta o actualiza una corrección manual (UPSERT) en PostgreSQL."""
+    query = text("""
+        INSERT INTO sinonimos_factura (nombre_factura, codigo_medicamento, metodo)
+        VALUES (:nombre_factura, :codigo_medicamento, 'Manual')
+        ON CONFLICT (nombre_factura)
+        DO UPDATE SET
+            codigo_medicamento = EXCLUDED.codigo_medicamento,
+            metodo = 'Manual';
+    """)
+    with get_conn() as conn:
+        conn.execute(query, {"nombre_factura": nombre_factura, "codigo_medicamento": codigo_medicamento})
+        conn.commit() # ¡Importante! Confirmar la transacción
 
 def search_fuzzy(q: str, k: int = 10):
     qn = normalize_text(q)

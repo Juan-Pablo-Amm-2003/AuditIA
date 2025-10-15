@@ -31,3 +31,9 @@ dist/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Scripts locales de utilidad y prueba
+init_db.py
+test_implementation.py
+view_corrections.py
+sample_invoice.json

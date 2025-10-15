@@ -1,29 +1,18 @@
 import asyncio
 import logging
-import json
 from typing import List, Dict, Any
-from pathlib import Path
 from thefuzz import fuzz
-from src.db import get_by_exact_name, search_fuzzy, get_by_codigo
+from src.db import get_by_exact_name, search_fuzzy, get_by_codigo, load_all_synonyms_from_db
 from src.services.ai_assistant import AIAssistant
 
 logger = logging.getLogger(__name__)
-SYNONYMS_FILE = Path("data/synonyms.json")
 
 class OrchestrationService:
     """Orquesta el flujo completo de auditoría de ítems de factura."""
     def __init__(self):
         self.ai_agent = AIAssistant()
-        # Cargamos los sinónimos (que contienen las correcciones manuales)
-        self.synonyms = self._load_synonyms()
-
-    def _load_synonyms(self) -> Dict[str, str]:
-        """Carga el diccionario de sinónimos desde un archivo JSON."""
-        if SYNONYMS_FILE.is_file():
-            try:
-                with open(SYNONYMS_FILE, 'r', encoding='utf-8') as f: return json.load(f)
-            except (json.JSONDecodeError, FileNotFoundError): return {}
-        return {}
+        # Cargamos todos los mapeos (sinónimos y correcciones) desde la BD
+        self.mappings = load_all_synonyms_from_db()
 
     async def process_items(self, items: List[Dict[str, Any]]) -> Dict[str, List]:
         """FASE 2: Procesa ítems para encontrar matches directos o preparar para la IA."""
@@ -33,28 +22,23 @@ class OrchestrationService:
             nombre_factura = item["nombre_factura"]
             
             match_info = None
-            metodo_origen = None # Inicializamos la variable para la regla de origen
-
-            # 1. Match por Sinónimo (Incluye correcciones manuales persistidas)
-            if nombre_factura in self.synonyms:
-                codigo = self.synonyms[nombre_factura]
+            # 1. Match por Mapeo de BD (Sinónimos / Manual)
+            if nombre_factura in self.mappings:
+                mapping = self.mappings[nombre_factura]
+                codigo = mapping["codigo"]
+                metodo = mapping["metodo"]
                 
-                # --- LÓGICA CRÍTICA DE ORIGEN ---
-                # Si está en el archivo que guarda las correcciones, lo etiquetamos como Manual.
-                # Como tu back-end usa este archivo para persistir correcciones, asignamos "Manual".
-                metodo_origen = "Manual" 
-                logger.info(f"Match por Corrección Persistida para '{nombre_factura}' -> '{codigo}'")
+                logger.info(f"Match por Mapeo de BD ('{metodo}') para '{nombre_factura}' -> '{codigo}'")
                 
                 match = get_by_codigo(codigo)
                 if match:
-                    # Asignación de Score 100.0 y Método
                     match_info = {
-                        "codigo_bd": match[0], 
-                        "nombre_bd": match[1], 
-                        "precio_referencia": float(match[2]) if match[2] else 0.0, 
+                        "codigo_bd": match[0],
+                        "nombre_bd": match[1],
+                        "precio_referencia": float(match[2]) if match[2] else 0.0,
                         "confianza": 100,
                         "score_coincidencia": 100.0,
-                        "metodo_conciliacion": "Manual" # <--- ¡ETIQUETA MANUAL APLICADA!
+                        "metodo_conciliacion": metodo # Asignamos el método desde la BD
                     }
             
             # 2. Match Exacto (solo si no se encontró por sinónimo)
